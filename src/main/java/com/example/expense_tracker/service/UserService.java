@@ -9,13 +9,11 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -29,27 +27,25 @@ public class UserService {
     @Autowired
     AuthenticationManager authenticationManager;
 
-    public List<User> getUsers() {
-        return userRepository.findAll();
+    public List<UserResDto> getUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(UserResDto::from)
+                .collect(Collectors.toList());
+    }
+
+    public User getUserByEmailId(String emailId) {
+        return userRepository.findByEmailId(emailId).orElseThrow();
+    }
+
+    public UserResDto getUserById(long userId) {
+        return UserResDto.from(userRepository.findById(userId).orElseThrow());
     }
 
     public UserResDto createNewUser(UserReqDto userReq) {
-        // Create User Object
-        User userObj = new User();
-        userObj.setName(userReq.getName());
-        userObj.setEmailId(userReq.getEmailId());
+        User userObj = UserReqDto.toUser(userReq);
         userObj.setPassword(encoder.encode(userReq.getPassword()));
-
-        // Save user
-        User newUser = userRepository.save(userObj);
-
-        // prepare UserRes
-        UserResDto userRes = new UserResDto();
-        userRes.setId(newUser.getId());
-        userRes.setName(newUser.getName());
-        userRes.setEmailId(newUser.getEmailId());
-
-        return userRes;
+        return UserResDto.from(userRepository.save(userObj));
     }
 
     public void verify(@Valid AuthReqDto authReq) {
